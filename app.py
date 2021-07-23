@@ -1,4 +1,4 @@
-from enum import unique
+# import required modules
 import os
 from flask import Flask, jsonify, request, abort
 from flask_sqlalchemy import SQLAlchemy
@@ -7,8 +7,10 @@ import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-
+# initialize the app
 app = Flask(__name__)
+
+# app configurations
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['UPLOAD_PATH'] = os.getenv("UPLOAD_PATH")
@@ -16,7 +18,7 @@ app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024
 app.config['UPLOAD_EXTENSIONS'] = ['.jpg', '.png']
 app.config.from_object("config")
 
-
+# initialize the db
 db = SQLAlchemy(app)
 
 # Models
@@ -117,6 +119,7 @@ def create_user_profile():
     if not user:
         return jsonify({"message": "User not found"})
 
+    # save profile photo
     filepath = os.path.join(app.config['UPLOAD_PATH'], 'no_profile_photo.png')
     if 'file' in request.files:
         uploaded_file = request.files['file']
@@ -194,6 +197,7 @@ def update_profile(profile_id):
     if not profile:
         abort(404)
     
+    # check if profile photo is changed
     if 'file' in request.files:
         uploaded_file = request.files['file']
         filename = secure_filename(uploaded_file.filename)
@@ -215,12 +219,7 @@ def update_profile(profile_id):
     db.session.commit()
 
     return jsonify({"message":"Profile has been updated"})
-    
-    
 
-
-    db.session.commit()
-    return jsonify({"message":"User has been promoted"})
 
 
 if __name__ == "__main__":
