@@ -14,6 +14,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['UPLOAD_PATH'] = os.getenv("UPLOAD_PATH")
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024
 app.config['UPLOAD_EXTENSIONS'] = ['.jpg', '.png']
+app.config.from_object("config")
 
 
 db = SQLAlchemy(app)
@@ -116,7 +117,7 @@ def create_user_profile():
     if not user:
         return jsonify({"message": "User not found"})
 
-    filepath = '/uploads/no_profile_photo.png'
+    filepath = os.path.join(app.config['UPLOAD_PATH'], 'no_profile_photo.png')
     if 'file' in request.files:
         uploaded_file = request.files['file']
         filename = secure_filename(uploaded_file.filename)
@@ -124,8 +125,10 @@ def create_user_profile():
             file_ext = os.path.splitext(filename)[1]
             if file_ext not in app.config['UPLOAD_EXTENSIONS']:
                 abort(400)
-            uploaded_file.save(os.path.join(app.config['UPLOAD_PATH'], data['user_id']))
-            filepath = os.path.join(app.config['UPLOAD_PATH'], data['user_id'])
+            filename = data['user_id'] + file_ext
+            uploaded_file.save(os.path.join(app.config['UPLOAD_PATH'], filename))
+            filepath = os.path.join(app.config['UPLOAD_PATH'], filename)
+            profile.profile_photo = filepath
     
     user_profile = Profile( username=data['username'], 
                             profile_photo = filepath,
@@ -160,6 +163,25 @@ def get_all_profiles():
 
     return jsonify({"profiles": output})
 
+# get one profile from db
+@app.route('/profile/<user_id>', methods = ['GET'])
+def get_user_profile(user_id):
+    profile = Profile.query.filter_by(user_id=user_id).first()
+    if not profile:
+        abort(404)
+    profile_data = {}
+    profile_data['id'] = profile.id
+    profile_data['user_id'] = profile.user_id
+    profile_data['phonenumber'] = profile.phonenumber 
+    profile_data['gender'] = profile.gender 
+    profile_data['dob'] = profile.dob 
+    profile_data['firstname'] = profile.firstname 
+    profile_data['lastname'] = profile.lastname 
+    profile_data['username'] = profile.username 
+    profile_data['profile_photo'] = profile.profile_photo 
+
+    return jsonify({"profile": profile_data})
+
 # update profile in db
 @app.route('/profile/<profile_id>', methods = ['PUT'])
 def update_profile(profile_id):
@@ -170,8 +192,29 @@ def update_profile(profile_id):
     
     profile = Profile.query.filter_by(id=profile_id).first()
     if not profile:
-        abort(404, message="Could not find video with id")
+        abort(404)
     
+    if 'file' in request.files:
+        uploaded_file = request.files['file']
+        filename = secure_filename(uploaded_file.filename)
+        if filename != '':
+            file_ext = os.path.splitext(filename)[1]
+            if file_ext not in app.config['UPLOAD_EXTENSIONS']:
+                abort(400)
+            filename = data['user_id'] + file_ext
+            uploaded_file.save(os.path.join(app.config['UPLOAD_PATH'], filename))
+            filepath = os.path.join(app.config['UPLOAD_PATH'], filename)
+            profile.profile_photo = filepath
+    
+    profile.username = data['username']
+    profile.firstname = data['firstname']
+    profile.lastname = data['lastname']
+    profile.dob = data['dob']
+    profile.gender = data['gender']
+    profile.phonenumber = data['phonenumber']
+    db.session.commit()
+
+    return jsonify({"message":"Profile has been updated"})
     
     
 
@@ -181,4 +224,4 @@ def update_profile(profile_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
