@@ -1,10 +1,13 @@
+from decouple import config
+
+
 # config.py
 class Config(object):
     DEBUG = False
     TESTING = False
-    SECRET_KEY = "Th1s%#1s&my*!S3cr3t%&K3y"
-    UPLOAD_PATH = "app/static/profile_photos/"
-    DATABASE_URL = 'sqlite:///app/db/prometheus.db'
+    SECRET_KEY = config('SECRET_KEY')
+    SQLALCHEMY_DATABASE_URI = config('DATABASE_URL')
+    UPLOAD_PATH = "/home/maina-muriuki/Documents/flask-profile-app-api/app/static/images/"
     UPLOAD_EXTENSIONS = ['.jpg', '.png']
     MAX_CONTENT_LENGTH = 1024 * 1024
 
