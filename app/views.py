@@ -7,11 +7,33 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from app.models import db,Profile,User
 from app import app
+import jwt
+from functools import wraps
 
 
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+
+        if 'x-access-token' in request.headers:
+            token = request.headers['x-access-token']
+        
+        if not token:
+            return jsonify({"message":"Token is missing"}), 401
+        
+        try:
+            data = jwt.decode(token, app.config["SECRET_KEY"])
+            current_user = User.query.filter_by(id=data.get('id')).first()
+        except:
+            return jsonify({"message":"Token is invalid"}), 401
+        
+        return f(current_user, *args, **kwargs)
+        
+    return decorated
 
 # Create a new user
-@app.route('/user/register', methods=['POST'])
+@app.route('/api/v1/user', methods=['POST'])
 def create_user():
     data = request.get_json()
     hashed_password = generate_password_hash(data.get('password'), method='sha256')
@@ -23,22 +45,30 @@ def create_user():
 
 
 # Login user
-@app.route('/user/login', methods=['POST'])
-def login_user():
-    data = request.get_json()
-    user = User.query.filter_by(email=data.get('email')).first()
+@app.route('/api/v1/login', methods=['POST'])
+def login():
+    auth = request.authorization
+
+    if not auth or not auth.username or not auth.password:
+        return jsonify({"message": "Invalid email or password!"}), 401
+
+    user = User.query.filter_by(email=auth.username).first()
     if not user:
-        return abort(404, message="User not found")
-    if check_password_hash(user.password, data.get('password')):
-        user_data = {'user_id': user.user_id, 'email': user.email, 'password': user.password, 'admin': user.admin,
-                     'created_at': user.created_at}
-        return jsonify({"user": user_data}), 200
+        return jsonify({"message": "Invalid email or password!"}), 401
+    
+    if check_password_hash(user.password,auth.password):
+        token = jwt.encode({'id': user.id},app.config['SECRET_KEY'])
+
+        return jsonify({'token': token.decode('UTF-8')}), 200
+
     return jsonify({"message": "Invalid email or password!"}), 401
 
-
 # get all users in db
-@app.route('/user', methods=['GET'])
-def get_all_users():
+@app.route('/api/v1/user', methods=['GET'])
+@token_required
+def get_all_users(current_user):
+    if not current_user.admin:
+        return jsonify({"message": "Cannot perform that action"}), 401
     users = User.query.all()
     if not users:
         abort(204, message="No users found") 
@@ -52,8 +82,11 @@ def get_all_users():
 
 
 # get one user from db with id supplied
-@app.route('/user/<user_id>', methods=['GET'])
-def get_one_user(user_id):
+@app.route('/api/v1/user/<user_id>', methods=['GET'])
+@token_required
+def get_one_user(current_user,user_id):
+    if not current_user.admin:
+        return jsonify({"message": "Cannot perform that action"}), 401
     user = User.query.filter_by(id=user_id).first()
     if not user:
         abort(404, message="User not found")
@@ -64,8 +97,11 @@ def get_one_user(user_id):
 
 
 # delete user with id supplied from db
-@app.route('/user/<user_id>', methods=['DELETE'])
-def delete_user(user_id):
+@app.route('/api/v1/user/<user_id>', methods=['DELETE'])
+@token_required
+def delete_user(current_user,user_id):
+    if not current_user.id == user_id:
+        return jsonify({"message": "Cannot perform that action"}), 401
     user = User.query.filter_by(id=user_id).first()
     if not user:
         return abort(404 ,message="User not found")
@@ -76,9 +112,13 @@ def delete_user(user_id):
 
 
 # Create users profile
-@app.route('/profile', methods=['POST'])
-def create_user_profile():
+@app.route('/api/v1/profile', methods=['POST'])
+@token_required
+def create_user_profile(current_user):
     data = request.get_json()
+    if not current_user.id == data.get('user_id'):
+        return jsonify({"message": "Cannot perform that action"}), 401
+
     user = User.query.filter_by(id=data.get('user_id')).first()
     if not user:
         return abort(404, message="User not found")
@@ -113,8 +153,11 @@ def create_user_profile():
 
 
 # get all profiles in db
-@app.route('/profile', methods=['GET'])
-def get_all_profiles():
+@app.route('/api/v1/profile', methods=['GET'])
+@token_required
+def get_all_profiles(current_user):
+    if not current_user.admin:
+        return jsonify({"message": "Cannot perform that action"}), 401
     profiles = Profile.query.all()
     if not profiles:
         return abort(404, message="No profiles found")
@@ -129,8 +172,11 @@ def get_all_profiles():
 
 
 # get one profile from db
-@app.route('/profile/<user_id>', methods=['GET'])
-def get_user_profile(user_id):
+@app.route('/api/v1/profile/<user_id>', methods=['GET'])
+@token_required
+def get_user_profile(current_user,user_id):
+    if not current_user.id == user_id:
+        return jsonify({"message": "Cannot perform that action"}), 401
     user = User.query.filter_by(id=user_id).first()
     if not user:
         abort(404, message="User not found")
@@ -147,14 +193,18 @@ def get_user_profile(user_id):
 
 
 # update profile in db
-@app.route('/profile/<profile_id>', methods=['PUT'])
-def update_profile(profile_id):
+@app.route('/api/v1/profile/<user_id>', methods=['PUT'])
+@token_required
+def update_profile(current_user,user_id):
     data = request.get_json()
-    user = User.query.filter_by(id=data.get('user_id')).first()
+    if not current_user.id == user_id:
+        return jsonify({"message": "Cannot perform that action"}), 401
+
+    user = User.query.filter_by(id=user_id).first()
     if not user:
         abort(404, message="User not found")
 
-    profile = Profile.query.filter_by(id=profile_id).first()
+    profile = Profile.query.filter_by(user_id=user_id).first()
     if not profile:
         abort(404, message="Profile not found")
 
