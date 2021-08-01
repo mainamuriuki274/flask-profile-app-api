@@ -79,7 +79,6 @@ def login():
 
     if check_password_hash(user.password, auth.password):
         token = jwt.encode({'id': user.id}, app.config['SECRET_KEY'])
-        profile = Profile.query.filter_by(user_id=user.id)
 
         return jsonify({'token': token.decode('UTF-8')}), 200
 
@@ -125,7 +124,7 @@ def get_all_users(current_user):
         return jsonify({"message": "Cannot perform that action"}), 401
     users = User.query.all()
     if not users:
-        abort(204, message="No users found")
+        abort(204)
     output = []
     for user in users:
         user_data = {'user_id': user.id, 'email': user.email, 'password': user.password, 'admin': user.admin,
@@ -141,7 +140,7 @@ def get_all_users(current_user):
 def get_one_user(current_user):
     user = User.query.filter_by(id=current_user.id).first()
     if not user:
-        abort(404, message="User not found")
+        abort(404)
 
     user_data = {'email': user.email, 'password': user.password, 'admin': user.admin,
                  'created_at': user.created_at}
@@ -185,7 +184,7 @@ def delete_user(current_user):
     data = request.get_json()
     user = User.query.filter_by(id=current_user.id).first()
     if not user:
-        return abort(404, message="User not found")
+        return abort(404)
 
     if not check_password_hash(user.password, data.get('password')):
         abort(401)
@@ -202,7 +201,7 @@ def create_user_profile(current_user):
     data = request.get_json()
     user = User.query.filter_by(id=current_user.id).first()
     if not user:
-        return abort(404, message="User not found")
+        return abort(404)
 
     # save profile photo
     if not data.get('img'):
@@ -237,7 +236,7 @@ def get_all_profiles(current_user):
         return jsonify({"message": "Cannot perform that action"}), 401
     profiles = Profile.query.all()
     if not profiles:
-        return abort(404, message="No profiles found")
+        return abort(404)
     output = []
     for profile in profiles:
         profile_data = {'user_id': profile.user_id, 'phonenumber': profile.phonenumber, 'gender': profile.gender,
@@ -254,11 +253,11 @@ def get_all_profiles(current_user):
 def get_user_profile(current_user):
     user = User.query.filter_by(id=current_user.id).first()
     if not user:
-        abort(404, message="User not found")
+        abort(404)
 
     profile = Profile.query.filter_by(user_id=current_user.id).first()
     if not profile:
-        abort(404, message="Profile not found")
+        abort(404)
 
     ext = profile.profile_photo.split(".")[-1]
     with open(os.path.abspath(os.getcwd()) + profile.profile_photo, "rb") as f:
@@ -281,11 +280,11 @@ def update_profile(current_user):
     data = request.get_json()
     user = User.query.filter_by(id=current_user.id).first()
     if not user:
-        abort(404, message="User not found")
+        abort(404)
 
     profile = Profile.query.filter_by(user_id=current_user.id).first()
     if not profile:
-        abort(404, message="Profile not found")
+        abort(404)
 
     # check if profile photo is changed
     if data.get('img'):
