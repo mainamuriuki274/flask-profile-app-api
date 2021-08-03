@@ -30,5 +30,4 @@ class TestingConfig(Config):
     DEBUG = True
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite://"
-    UPLOAD_PATH = os.path.abspath(os.getcwd()) + "/app/static/test_images/"
-
+    UPLOAD_PATH = os.path.abspath(os.getcwd()) + "app/static/test_images/"
