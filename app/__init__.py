@@ -15,5 +15,6 @@ from app import views
 # load the models
 from app import models
 
+
 # load the config file
 app.config.from_object(ProductionConfig)

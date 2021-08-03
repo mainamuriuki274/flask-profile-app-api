@@ -1,5 +1,4 @@
 # import required modules
-import os
 from flask import jsonify, request, abort
 import uuid
 import datetime
@@ -26,7 +25,7 @@ def save_image(encoded_image, extension, current_user, ):
     with open(filepath, 'wb') as f:
         f.write(image)
 
-    return app.config['UPLOAD_PATH'] + filename
+    return filepath
 
 
 def token_required(f):
@@ -257,8 +256,9 @@ def get_user_profile(current_user):
         abort(404)
 
     ext = profile.profile_photo.split(".")[-1]
-    with open(os.path.abspath(os.getcwd()) + profile.profile_photo, "rb") as f:
+    with open(profile.profile_photo, "rb") as f:
         img = f.read()
+    print(profile.profile_photo)
     data = base64.b64encode(img).decode()
     src = "data:image/{ext};base64,{data}".format(ext=ext, data=data)
 
