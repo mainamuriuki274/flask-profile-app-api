@@ -119,7 +119,7 @@ def update_password(current_user):
 # get all users in db
 @app.route('/api/v1/users', methods=['GET'])
 @token_required
-def get_all_users(current_user):
+def get_users(current_user):
     if not current_user.admin:
         return jsonify({"message": "Cannot perform that action"}), 401
     users = User.query.all()
@@ -137,7 +137,7 @@ def get_all_users(current_user):
 # get one user from db with id supplied
 @app.route('/api/v1/user', methods=['GET'])
 @token_required
-def get_one_user(current_user):
+def get_user(current_user):
     user = User.query.filter_by(id=current_user.id).first()
     if not user:
         abort(404)

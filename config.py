@@ -10,7 +10,6 @@ class Config(object):
     db_path = os.path.join(os.path.dirname(__file__), config('DATABASE_URL'))
     db_uri = 'sqlite:///{}'.format(db_path)
     SQLALCHEMY_DATABASE_URI = db_uri
-    print(db_uri)
     UPLOAD_PATH = "/app/static/images/"
     UPLOAD_EXTENSIONS = ['data:image/png;base64', 'data:image/jpg;base64', 'data:image/jpeg;base64']
     MAX_CONTENT_LENGTH = 1024 * 1024
@@ -28,3 +27,4 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     TESTING = True
     DEBUG = True
+
