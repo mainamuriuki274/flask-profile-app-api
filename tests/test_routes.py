@@ -1,15 +1,21 @@
-from app import create_app as app
+from app import app
 from app.models import db
+import base64
 import pytest
 import json
+import os
 
-token = None
+
+token_data = {
+    'token': ''
+}
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def client():
-    app.config.from_object("config.TestingConfig")
+    app.testing = True
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+    app.config['UPLOAD_PATH'] = "/app/static/test_images/"
 
     client = app.test_client()
     with app.app_context():
@@ -18,10 +24,8 @@ def client():
 
 
 def test_create_user(client):
-    mimetype = 'application/json'
     headers = {
-        'Content-Type': mimetype,
-        'Accept': mimetype
+        'Content-Type': 'application/json',
     }
     data = {
         'email': 'testUser@gmail.com',
@@ -29,42 +33,32 @@ def test_create_user(client):
     }
     url = '/api/v1/user'
     response = client.post(url, data=json.dumps(data), headers=headers)
-    token = response.json().token
-    assert response.content_type == mimetype
+    response_data = response.json
+    token_data['token'] = response_data.get('token')
     assert response.status_code == 201
 
-
 def test_login(client):
-    mimetype = 'application/json'
     headers = {
-        'Content-Type': mimetype,
-        'Accept': mimetype
-    }
-    data = {
-        'email': 'testUser@gmail.com',
-        'password': '1234567890'
-    }
-    url = '/api/v1/user'
-    response = client.get(url, data=json.dumps(data), headers=headers)
-    token = response.json().token
-    assert response.content_type == mimetype
+        "Authorization" : "Basic %s" % base64.b64encode('testUser@gmail.com:1234567890'.encode()).decode()
+        }
+    url = '/api/v1/login'
+    response = client.get(url, headers=headers)
+    response_data = response.json
+    token_data['token'] = response_data.get('token')
     assert response.status_code == 200
-
 
 def test_update_email(client):
     mimetype = 'application/json'
     headers = {
         'Content-Type': mimetype,
         'Accept': mimetype,
-        'x-access-token': token
+        'x-access-token': token_data.get('token')
     }
     data = {
         'email': 'testUserUpdate@gmail.com',
     }
-    url = '/api/v1/email'
-    response = client.get(url, data=json.dumps(data), headers=headers)
-
-    assert response.content_type == mimetype
+    url = '/api/v1/user/email'
+    response = client.put(url, data=json.dumps(data), headers=headers)
     assert response.status_code == 200
 
 
@@ -73,31 +67,25 @@ def test_update_password(client):
     headers = {
         'Content-Type': mimetype,
         'Accept': mimetype,
-        'x-access-token': token
+        'x-access-token': token_data.get('token')
     }
     data = {
-        'password': 'updatedpassword',
+        'password': '1234567890',
+        'newPassword': 'updatedpassword',
     }
-    url = '/api/v1/password'
-    response = client.get(url, data=json.dumps(data), headers=headers)
-    assert response.content_type == mimetype
+    url = '/api/v1/user/password'
+    response = client.put(url, data=json.dumps(data), headers=headers)
     assert response.status_code == 200
 
 
 def test_updated_login(client):
-    mimetype = 'application/json'
     headers = {
-        'Content-Type': mimetype,
-        'Accept': mimetype
-    }
-    data = {
-        'email': 'testUserUpdate@gmail.com',
-        'password': 'updatedpassword'
-    }
-    url = '/api/v1/user'
-    response = client.get(url, data=json.dumps(data), headers=headers)
-    token = response.json().token
-    assert response.content_type == mimetype
+        "Authorization" : "Basic %s" % base64.b64encode('testUserUpdate@gmail.com:updatedpassword'.encode()).decode()
+        }
+    url = '/api/v1/login'
+    response = client.get(url, headers=headers)
+    response_data = response.json
+    token_data['token'] = response_data.get('token')
     assert response.status_code == 200
 
 
@@ -106,24 +94,10 @@ def test_get_user(client):
     headers = {
         'Content-Type': mimetype,
         'Accept': mimetype,
-        'x-access-token': token
+        'x-access-token': token_data.get('token')
     }
     url = '/api/v1/user'
     response = client.get(url, headers=headers)
-    assert response.content_type == mimetype
-    assert response.status_code == 200
-
-
-def test_get_users(client):
-    mimetype = 'application/json'
-    headers = {
-        'Content-Type': mimetype,
-        'Accept': mimetype,
-        'x-access-token': token
-    }
-    url = '/api/v1/users'
-    response = client.get(url, headers=headers)
-    assert response.content_type == mimetype
     assert response.status_code == 200
 
 
@@ -133,10 +107,33 @@ def test_get_email(client):
         'Content-Type': mimetype,
         'Accept': mimetype,
     }
-    url = '/api/v1/email/testUser@gmail.com'
+    url = '/api/v1/email/testUserUpdate@gmail.com'
     response = client.get(url, headers=headers)
-    assert response.content_type == mimetype
     assert response.status_code == 409
+
+
+
+def test_create_user_profile(client):
+    with open(os.path.join(os.path.abspath(os.getcwd()) + '/tests/test_b64_img.txt')) as img:
+        b64_img = img.read()
+    mimetype = 'application/json'
+    headers = {
+        'Content-Type': mimetype,
+        'Accept': mimetype,
+        'x-access-token': token_data.get('token')
+    }
+    data = {
+        'username': 'testUsername',
+        'img': b64_img,
+        'firstname': 'TestFirstname',
+        'lastname': 'TestLastname',
+        'dob': '2021-08-12',
+        'gender': 'male',
+        'phonenumber': '0714309092'
+    }
+    url = '/api/v1/profile'
+    response = client.post(url, data=json.dumps(data), headers=headers)
+    assert response.status_code == 201
 
 
 def test_get_username(client):
@@ -145,9 +142,8 @@ def test_get_username(client):
         'Content-Type': mimetype,
         'Accept': mimetype,
     }
-    url = '/api/v1/username/testUsername.com'
+    url = '/api/v1/username/testUsername'
     response = client.get(url, headers=headers)
-    assert response.content_type == mimetype
     assert response.status_code == 409
 
 
@@ -157,9 +153,8 @@ def test_get_phonenumber(client):
         'Content-Type': mimetype,
         'Accept': mimetype,
     }
-    url = '/api/v1/username/0714309092'
+    url = '/api/v1/phonenumber/0714309092'
     response = client.get(url, headers=headers)
-    assert response.content_type == mimetype
     assert response.status_code == 409
 
 
@@ -168,25 +163,8 @@ def test_delete_user(client):
     headers = {
         'Content-Type': mimetype,
         'Accept': mimetype,
+        'x-access-token': token_data.get('token')
     }
     url = '/api/v1/user'
     response = client.delete(url, headers=headers)
-    assert response.content_type == mimetype
     assert response.status_code == 200
-
-
-def test_create_user_profile(client):
-    mimetype = 'application/json'
-    headers = {
-        'Content-Type': mimetype,
-        'Accept': mimetype
-    }
-    data = {
-        'email': 'testUser@gmail.com',
-        'password': '1234567890'
-    }
-    url = '/api/v1/user'
-    response = client.post(url, data=json.dumps(data), headers=headers)
-    token = response.json().token
-    assert response.content_type == mimetype
-    assert response.status_code == 201
