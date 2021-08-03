@@ -16,7 +16,7 @@ class ProductionConfig(Config):
     db_path = os.path.abspath(os.getcwd()) + decouple.config('DATABASE_URL')
     db_uri = 'sqlite:///{}'.format(db_path)
     SQLALCHEMY_DATABASE_URI = db_uri
-    UPLOAD_PATH = os.path.abspath(os.getcwd()) + "app/static/images/"
+    UPLOAD_PATH = os.path.abspath(os.getcwd()) + "/static/images/"
 
 
 class DevelopmentConfig(Config):
