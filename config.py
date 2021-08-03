@@ -6,7 +6,7 @@ import os
 class Config(object):
     DEBUG = False
     TESTING = False
-    SECRET_KEY = decouple.config('SECRET_KEY')
+    SECRET_KEY = os.environ.get('SECRET_KEY')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_EXTENSIONS = ['data:image/png;base64', 'data:image/jpg;base64', 'data:image/jpeg;base64']
     MAX_CONTENT_LENGTH = 1024 * 1024
