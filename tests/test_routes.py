@@ -4,6 +4,8 @@ import base64
 import pytest
 import json
 import os
+import sys
+from config import TestingConfig
 
 
 token_data = {
@@ -13,14 +15,15 @@ token_data = {
 
 @pytest.fixture(scope="module")
 def client():
-    app.testing = True
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
-    app.config['UPLOAD_PATH'] = "/app/static/test_images/"
-
+    app.config.from_object(TestingConfig)
     client = app.test_client()
     with app.app_context():
         db.create_all()
     yield client
+    
+    test_images_directory = app.config['UPLOAD_PATH']
+    for img in os.listdir(test_images_directory):
+        os.remove(os.path.join(test_images_directory, img))
 
 
 def test_create_user(client):
@@ -80,7 +83,7 @@ def test_update_password(client):
 
 def test_updated_login(client):
     headers = {
-        "Authorization" : "Basic %s" % base64.b64encode('testUserUpdate@gmail.com:updatedpassword'.encode()).decode()
+        "Authorization" : "Basic %s" % base64.b64encode('testUserUpdate@gmail.com:updatedpassword'.encode()).decode('UTF-8')
         }
     url = '/api/v1/login'
     response = client.get(url, headers=headers)
@@ -114,7 +117,7 @@ def test_get_email(client):
 
 
 def test_create_user_profile(client):
-    with open(os.path.join(os.path.abspath(os.getcwd()) + '/tests/test_b64_img.txt')) as img:
+    with open(os.path.dirname(os.getcwd()) + '/tests/test_b64_img.txt') as img:
         b64_img = img.read()
     mimetype = 'application/json'
     headers = {
@@ -159,12 +162,13 @@ def test_get_phonenumber(client):
 
 
 def test_delete_user(client):
-    mimetype = 'application/json'
     headers = {
-        'Content-Type': mimetype,
-        'Accept': mimetype,
+        'Content-Type': 'application/json',
         'x-access-token': token_data.get('token')
     }
+    data = {
+        'password': 'updatedpassword'
+    }
     url = '/api/v1/user'
-    response = client.delete(url, headers=headers)
+    response = client.delete(url,data=json.dumps(data) ,headers=headers)
     assert response.status_code == 200

@@ -1,6 +1,7 @@
 
 from flask import Flask
 from flask_cors import CORS
+from config import ProductionConfig
 
 # initialize the app
 app = Flask(__name__, instance_relative_config=True)
@@ -15,4 +16,4 @@ from app import views
 from app import models
 
 # load the config file
-app.config.from_object("config.DevelopmentConfig")
+app.config.from_object(ProductionConfig)

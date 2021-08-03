@@ -22,7 +22,7 @@ def save_image(encoded_image, extension, current_user, ):
         ext = '.jpeg'
 
     filename = current_user + ext
-    filepath = os.path.join(os.path.abspath(os.getcwd()) + app.config['UPLOAD_PATH'], filename)
+    filepath = app.config['UPLOAD_PATH'] + filename
     with open(filepath, 'wb') as f:
         f.write(image)
 
@@ -41,7 +41,7 @@ def token_required(f):
             return jsonify({"message": "Token is missing"}), 401
 
         try:
-            data = jwt.decode(token, app.config["SECRET_KEY"])
+            data = jwt.decode(token, app.config["SECRET_KEY"], 'UTF-8')
             current_user = User.query.filter_by(id=data.get('id')).first()
         except:
             return jsonify({"message": "Token is invalid"}), 401
