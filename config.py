@@ -13,7 +13,7 @@ class Config(object):
     
 
 class ProductionConfig(Config):
-    db_path = os.path.abspath(os.getcwd()) + decouple.config('DATABASE_URL')
+    db_path = os.path.abspath(os.getcwd()) + os.environ.get('DATABASE_URL')
     db_uri = 'sqlite:///{}'.format(db_path)
     SQLALCHEMY_DATABASE_URI = db_uri
     UPLOAD_PATH = os.path.dirname(os.getcwd()) + "/app/static/images/"
@@ -21,7 +21,7 @@ class ProductionConfig(Config):
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    db_path = os.path.abspath(os.getcwd()) + decouple.config('DEVELOPMENT_DATABASE_URL')
+    db_path = os.path.abspath(os.getcwd()) + os.environ.get('DEVELOPMENT_DATABASE_URL')
     db_uri = 'sqlite:///{}'.format(db_path)
     SQLALCHEMY_DATABASE_URI = db_uri
 
